@@ -69,7 +69,7 @@ private:
 class TServerFifo : public TServerTransport {
 public:
   TServerFifo(const std::string &base_path);
-  virtual ~TServerFifo() = default;
+  virtual ~TServerFifo();
 
   virtual bool isOpen() const;
 
@@ -93,6 +93,15 @@ private:
   std::shared_ptr<TFifo> fifo_;
 }; //class TServerFifo
 
+
+class FifoException : public std::exception {
+  public:
+    FifoException(std::string message) : message_ (message) {}
+    virtual ~FifoException() = default;
+  
+  private:
+    std::string message_;
+};//class FifoException
 
 
 }// namespace transport

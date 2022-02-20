@@ -34,13 +34,17 @@ TFifo::TFifo(const std::string& base_path, bool is_server, std::shared_ptr<TConf
     write_name_ = base_name_ + "_w";
     if (false == exists(read_name_.c_str())) {
         errno = 0;
-        if (0 != ::mkfifo(read_name_.c_str(), 0666)) {
-            throw std::exception();
+        int result = ::mkfifo(read_name_.c_str(), 0666);
+        if (0 != result) {
+            cerr << "mkfifo failed " << read_name_.c_str() << result;
+            throw FifoException("failed to mkfifo read");
         }//endif
     }//endif need to create read fifo
     if (false == exists(write_name_.c_str())) {
-        if (0 != ::mkfifo(write_name_.c_str(), 0666)) {
-            throw std::exception();
+        int result = ::mkfifo(write_name_.c_str(), 0666);
+        if (0 != result) {
+            cerr << "mkfifo failed " << write_name_.c_str() << result;
+            throw FifoException("mkfifo write failed");
         }//endif
     }//endif need to create write fifo
     open();
@@ -52,9 +56,9 @@ TFifo::~TFifo() {
     if (false == is_server_) {
         doomed = write_name_;
     }//endif client tries to remove write fifo
-    int result = std::remove(read_name_.c_str());
+    int result = std::remove(doomed.c_str());
     if (0 != result) {
-        throw(std::exception());
+        throw(FifoException(doomed.c_str()));
     }//endif
 }//dt
 
@@ -153,6 +157,10 @@ std::shared_ptr<TTransport>
 TServerFifo::acceptImpl() {
     fifo_.reset(new TFifo(base_path_, true /*is server*/ ));
     return fifo_;
+}
+
+TServerFifo::~TServerFifo() {
+    cout << "TServerFifo::dt" << endl;
 }
 
 
