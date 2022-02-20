@@ -76,18 +76,22 @@ TFifo::~TFifo() {
   if (true == is_server_) {
       if (0 == read_fd_) {
         read_fd_ = ::open(read_name_.c_str(), O_RDONLY);
+        cout << "server opened read " << read_name_.c_str() << " fd is " << read_fd_ << endl;
       }//endif need to open read fifo for reading
       if (0 == write_fd_) {
         write_fd_ = ::open(write_name_.c_str(), O_WRONLY | O_NONBLOCK);
+        cout << "server opened write " << write_name_.c_str() << " fd is " << write_fd_ << endl;
       }//endif need to open write fifo for writing
     }//endif we're the server
     else {
-        if (0 == read_fd_) {
-            read_fd_ = ::open(write_name_.c_str(), O_RDONLY);
-        }//endif need to open write fifo for reading
         if (0 == write_fd_) {
             write_fd_ = ::open(read_name_.c_str(), O_WRONLY | O_NONBLOCK);
+            cout << "client opened write " << read_name_.c_str() << " fd is " << write_fd_ << endl;
         }// endif need to open read fifo for writing
+        if (0 == read_fd_) {
+            read_fd_ = ::open(write_name_.c_str(), O_RDONLY);
+            cout << "client opened read " << write_name_.c_str() << " fd is " << read_fd_ << endl;
+        }//endif need to open write fifo for reading
     }//else we're the client
   }//open
 
