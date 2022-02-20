@@ -119,10 +119,10 @@ class CalculatorCloneFactory : virtual public CalculatorIfFactory {
   {
     std::shared_ptr<TSocket> sock = std::dynamic_pointer_cast<TSocket>(connInfo.transport);
     cout << "Incoming connection\n";
-    cout << "\tSocketInfo: "  << sock->getSocketInfo() << "\n";
-    cout << "\tPeerHost: "    << sock->getPeerHost() << "\n";
-    cout << "\tPeerAddress: " << sock->getPeerAddress() << "\n";
-    cout << "\tPeerPort: "    << sock->getPeerPort() << "\n";
+//    cout << "\tSocketInfo: "  << sock->getSocketInfo() << "\n";
+//    cout << "\tPeerHost: "    << sock->getPeerHost() << "\n";
+//    cout << "\tPeerAddress: " << sock->getPeerAddress() << "\n";
+//    cout << "\tPeerPort: "    << sock->getPeerPort() << "\n";
     return new CalculatorHandler;
   }
   void releaseHandler( ::shared::SharedServiceIf* handler) override {
@@ -175,6 +175,7 @@ int main() {
   */
 
   cout << "Starting the server..." << endl;
+  server.setConcurrentClientLimit(1);
   server.serve();
   cout << "Done." << endl;
   return 0;

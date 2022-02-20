@@ -75,7 +75,7 @@ TFifo::~TFifo() {
   TFifo::open() {
   if (true == is_server_) {
       if (0 == read_fd_) {
-        read_fd_ = ::open(read_name_.c_str(), O_RDONLY | O_NONBLOCK);
+        read_fd_ = ::open(read_name_.c_str(), O_RDONLY);
       }//endif need to open read fifo for reading
       if (0 == write_fd_) {
         write_fd_ = ::open(write_name_.c_str(), O_WRONLY | O_NONBLOCK);
@@ -83,7 +83,7 @@ TFifo::~TFifo() {
     }//endif we're the server
     else {
         if (0 == read_fd_) {
-            read_fd_ = ::open(write_name_.c_str(), O_RDONLY | O_NONBLOCK);
+            read_fd_ = ::open(write_name_.c_str(), O_RDONLY);
         }//endif need to open write fifo for reading
         if (0 == write_fd_) {
             write_fd_ = ::open(read_name_.c_str(), O_WRONLY | O_NONBLOCK);
