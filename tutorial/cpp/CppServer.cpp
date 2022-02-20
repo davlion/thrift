@@ -27,6 +27,7 @@
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TTransportUtils.h>
 #include <thrift/TToString.h>
+#include <thrift/transport/TFifoTransport.h>
 
 #include <iostream>
 #include <stdexcept>
@@ -132,7 +133,8 @@ class CalculatorCloneFactory : virtual public CalculatorIfFactory {
 int main() {
   TThreadedServer server(
     std::make_shared<CalculatorProcessorFactory>(std::make_shared<CalculatorCloneFactory>()),
-    std::make_shared<TServerSocket>(9090), //port
+//    std::make_shared<TServerSocket>(9090), //port
+    std::make_shared<TServerFifo>("/tmp/tutorial_fifo"),
     std::make_shared<TBufferedTransportFactory>(),
     std::make_shared<TBinaryProtocolFactory>());
 

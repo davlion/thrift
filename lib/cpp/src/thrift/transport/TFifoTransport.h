@@ -2,6 +2,7 @@
 #define _THRIFT_TRANSPORT_TFIFO_H_ 1
 
 #include <thrift/transport/TTransport.h>
+#include <thrift/transport/TServerTransport.h>
 #include <thrift/transport/TVirtualTransport.h>
 #include <thrift/TNonCopyable.h>
 
@@ -21,7 +22,7 @@ namespace transport {
 class TFifo : public TVirtualTransport<TFifo> {
 public:
   // Named fifo constructors -
-  explicit TFifo(const std::string& base_path, std::shared_ptr<TConfiguration> config = nullptr);       
+  explicit TFifo(const std::string& base_path, bool is_server, std::shared_ptr<TConfiguration> config = nullptr);       
 
   // Destroys the fifo object, closing it if necessary.
   virtual ~TFifo();
@@ -48,12 +49,51 @@ public:
   const std::string& get_fifo_name() {return base_name_;}
 private:
   std::string base_name_;
+  std::string read_name_;
+  std::string write_name_;
 
+  bool exists(const char* filePath);
   int read_fd_;
   int write_fd_;
-  bool owner_;
+  bool is_server_;
 
-};//class
+};//class TFifo
+
+
+/**
+ * Server transport framework. A server needs to have some facility for
+ * creating base transports to read/write from.  The server is expected
+ * to keep track of TTransport children that it creates for purposes of
+ * controlling their lifetime.
+ */
+class TServerFifo : public TServerTransport {
+public:
+  TServerFifo(const std::string &base_path);
+  virtual ~TServerFifo() = default;
+
+  virtual bool isOpen() const;
+
+  std::shared_ptr<TTransport> accept() {
+    std::shared_ptr<TTransport> result = acceptImpl();
+    if (!result) {
+      throw TTransportException("accept() may not return nullptr");
+    }
+    return result;
+  }
+
+  virtual void close();
+
+protected:
+  TServerFifo() = default;
+
+  virtual std::shared_ptr<TTransport> acceptImpl();
+
+private:
+  std::string base_path_;
+  std::shared_ptr<TFifo> fifo_;
+}; //class TServerFifo
+
+
 
 }// namespace transport
 }// namespace thrift

@@ -3,53 +3,65 @@
 #include <fcntl.h>
 #include <cstdio>
 #include "TFifoTransport.h"
+#include <sys/stat.h>
+#include <iostream>
 
 namespace apache {
 namespace thrift {
 namespace transport {
 
-TFifo::TFifo(const std::string& base_path, std::shared_ptr<TConfiguration> config)
-    : base_name_ (base_path)
-    , owner_ (false)
- {
-     std::string read_name {base_name_};
-     std::string write_name {base_name_};
-     read_name += "_r";
-     write_name += "_w";
-     if (0 == ::open(read_name.c_str(), 'r')) {
-         int result = ::mkfifo(read_name.c_str(), S_IRWXU);
-         if (0 == result) {
-             result = ::mkfifo(write_name.c_str(), S_IRWXU);
-         }//endif happy
-         if (0 != result) {
-             throw(std::exception());
-         }//endif unhappy
-         owner_ = true;
-     }//endif need to make pipes
+using namespace std;
 
+bool 
+TFifo::exists(const char* filePath)
+{
+	//The variable that holds the file information
+	struct stat fileAtt; //the type stat and function stat have exactly the same names, so to refer the type, we put struct before it to indicate it is an structure.
+
+	//Use the stat function to get the information
+	if (stat(filePath, &fileAtt) != 0) //start will be 0 when it succeeds
+        return false;
+	  
+	//S_ISREG is a macro to check if the filepath referers to a file. If you don't know what a macro is, it's ok, you can use S_ISREG as any other function, it 'returns' a bool.
+	return S_ISFIFO(fileAtt.st_mode);
+}
+
+TFifo::TFifo(const std::string& base_path, bool is_server, std::shared_ptr<TConfiguration> config)
+    : base_name_ (base_path)
+    , is_server_ (is_server)
+ {
+    read_name_ = base_name_ + "_r";
+    write_name_ = base_name_ + "_w";
+    if (false == exists(read_name_.c_str())) {
+        errno = 0;
+        if (0 != ::mkfifo(read_name_.c_str(), 0666)) {
+            throw std::exception();
+        }//endif
+    }//endif need to create read fifo
+    if (false == exists(write_name_.c_str())) {
+        if (0 != ::mkfifo(write_name_.c_str(), 0666)) {
+            throw std::exception();
+        }//endif
+    }//endif need to create write fifo
+    open();
 }//ct       
 
 // Destroys the fifo object, closing it if necessary.
 TFifo::~TFifo() {
-    if (true == owner_) {
-         std::string read_name {base_name_};
-         std::string write_name {base_name_};
-        read_name += "_r";
-        write_name += "_w";
-        int result = std::remove(read_name.c_str());
-        if (0 == result) {
-            result = std::remove(write_name.c_str());
-        }
-        if (0 != result) {
-            throw(std::exception());
-        }//
-    }//endif need to remove fifos
+    std::string doomed (read_name_);
+    if (false == is_server_) {
+        doomed = write_name_;
+    }//endif client tries to remove write fifo
+    int result = std::remove(read_name_.c_str());
+    if (0 != result) {
+        throw(std::exception());
+    }//endif
 }//dt
 
   // Returns whether the fifo is open & valid.
   bool 
   TFifo::isOpen() const {
-      return (0 != read_fd_) && (0 != write_fd_);
+      return ((0 != read_fd_) && (0 != write_fd_));
   }
 
   // Checks whether more data is available in the fifo.
@@ -61,18 +73,22 @@ TFifo::~TFifo() {
   // Creates and opens the named/anonymous fifo.
   void 
   TFifo::open() {
-  std::string read_name {base_name_};
-  std::string write_name {base_name_};
-  read_name += "_r";
-  write_name += "_w";
-  if (true == owner_) {
-        read_fd_ = ::open(read_name.c_str(), 'r');
-        write_fd_ = ::open(write_name.c_str(), 'w');
-    }//endif
+  if (true == is_server_) {
+      if (0 == read_fd_) {
+        read_fd_ = ::open(read_name_.c_str(), O_RDONLY | O_NONBLOCK);
+      }//endif need to open read fifo for reading
+      if (0 == write_fd_) {
+        write_fd_ = ::open(write_name_.c_str(), O_WRONLY | O_NONBLOCK);
+      }//endif need to open write fifo for writing
+    }//endif we're the server
     else {
-        read_fd_ = ::open(write_name.c_str(), 'r');
-        write_fd_ = ::open(read_name.c_str(), 'w');
-    }//else
+        if (0 == read_fd_) {
+            read_fd_ = ::open(write_name_.c_str(), O_RDONLY | O_NONBLOCK);
+        }//endif need to open write fifo for reading
+        if (0 == write_fd_) {
+            write_fd_ = ::open(read_name_.c_str(), O_WRONLY | O_NONBLOCK);
+        }// endif need to open read fifo for writing
+    }//else we're the client
   }//open
 
   // Shuts down communications on the fifo.
@@ -89,14 +105,52 @@ TFifo::~TFifo() {
   // Reads from the fifo.
   uint32_t 
   TFifo::read(uint8_t* buf, uint32_t len) {
-      return 0;
-  }
+    if (!isOpen()) {
+        open();
+    }
+    ssize_t bytes_read = ::read(read_fd_, buf, len);
+    return bytes_read;
+  }//read
 
   // Writes to the fifo.
   void 
   TFifo::write(const uint8_t* buf, uint32_t len) {
-      
-  }
+    if (!isOpen()) {
+        open();
+    }
+    ssize_t bytes_written = ::write(write_fd_, buf, len);
+  }//write
+
+
+/**
+ * Server transport framework. A server needs to have some facility for
+ * creating base transports to read/write from.  The server is expected
+ * to keep track of TTransport children that it creates for purposes of
+ * controlling their lifetime.
+ */
+TServerFifo::TServerFifo(const std::string &base_path) 
+    : base_path_ (base_path)
+{
+}   
+
+bool 
+TServerFifo::isOpen() const {
+    return (NULL != fifo_.get());
+}
+
+
+void 
+TServerFifo::close() {
+    fifo_.get()->close();
+    fifo_.reset();
+}
+
+std::shared_ptr<TTransport> 
+TServerFifo::acceptImpl() {
+    fifo_.reset(new TFifo(base_path_, true /*is server*/ ));
+    return fifo_;
+}
+
 
 }//ns transport
 }//ns thrift

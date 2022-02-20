@@ -22,7 +22,7 @@
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TTransportUtils.h>
-
+#include <thrift/transport/TFifoTransport.h>
 #include "../gen-cpp/Calculator.h"
 
 using namespace std;
@@ -34,8 +34,10 @@ using namespace tutorial;
 using namespace shared;
 
 int main() {
-  std::shared_ptr<TTransport> socket(new TSocket("localhost", 9090));
-  std::shared_ptr<TTransport> transport(new TBufferedTransport(socket));
+//  std::shared_ptr<TTransport> socket(new TSocket("localhost", 9090));
+  std::shared_ptr<TTransport> fifo(new TFifo("/tmp/tutorial_fifo", false /*is not server*/));
+//  std::shared_ptr<TTransport> transport(new TBufferedTransport(socket));
+  std::shared_ptr<TTransport> transport(new TBufferedTransport(fifo));
   std::shared_ptr<TProtocol> protocol(new TBinaryProtocol(transport));
   CalculatorClient client(protocol);
 
