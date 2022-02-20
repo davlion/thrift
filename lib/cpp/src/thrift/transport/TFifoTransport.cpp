@@ -29,6 +29,8 @@ TFifo::exists(const char* filePath)
 TFifo::TFifo(const std::string& base_path, bool is_server, std::shared_ptr<TConfiguration> config)
     : base_name_ (base_path)
     , is_server_ (is_server)
+    , read_fd_ (0)
+    , write_fd_ (0)
  {
     read_name_ = base_name_ + "_r";
     write_name_ = base_name_ + "_w";
@@ -56,6 +58,7 @@ TFifo::~TFifo() {
     if (false == is_server_) {
         doomed = write_name_;
     }//endif client tries to remove write fifo
+    cerr << "TFifo::dt deleting " << doomed << endl;
     int result = std::remove(doomed.c_str());
     if (0 != result) {
         throw(FifoException(doomed.c_str()));
@@ -104,9 +107,11 @@ TFifo::~TFifo() {
   TFifo::close() {
     if (0 != read_fd_) {
         ::close(read_fd_);
+        read_fd_ = 0;
     }//endif need to close
     if (0 != write_fd_) {
         ::close(write_fd_);
+        write_fd_ = 0;
     }//endif
   }//close
 

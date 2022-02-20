@@ -131,12 +131,13 @@ class CalculatorCloneFactory : virtual public CalculatorIfFactory {
 };
 
 int main() {
-  TThreadedServer server(
+/*  TThreadedServer server(
     std::make_shared<CalculatorProcessorFactory>(std::make_shared<CalculatorCloneFactory>()),
 //    std::make_shared<TServerSocket>(9090), //port
     std::make_shared<TServerFifo>("/tmp/tutorial_fifo"),
     std::make_shared<TBufferedTransportFactory>(),
     std::make_shared<TBinaryProtocolFactory>());
+//  server.setConcurrentClientLimit(1);
 
   /*
   // if you don't need per-connection state, do the following instead
@@ -149,14 +150,16 @@ int main() {
 
   /**
    * Here are some alternate server types...
-
+*/
   // This server only allows one connection at a time, but spawns no threads
   TSimpleServer server(
     std::make_shared<CalculatorProcessor>(std::make_shared<CalculatorHandler>()),
-    std::make_shared<TServerSocket>(9090),
+    std::make_shared<TServerFifo>("/tmp/tutorial_fifo"),
+//    std::make_shared<TServerSocket>(9090),
     std::make_shared<TBufferedTransportFactory>(),
     std::make_shared<TBinaryProtocolFactory>());
 
+/*
   const int workerCount = 4;
 
   std::shared_ptr<ThreadManager> threadManager =
@@ -175,7 +178,6 @@ int main() {
   */
 
   cout << "Starting the server..." << endl;
-  server.setConcurrentClientLimit(1);
   server.serve();
   cout << "Done." << endl;
   return 0;
